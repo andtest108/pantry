@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Pantry Manager</title>
+  <!-- Web App Manifest for Mobile/PWA -->
+  <link rel="manifest" href="data:application/json,{ %22name%22:%22Smart%20Pantry%22,%22short_name%22:%22Pantry%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23ffffff%22,%22theme_color%22:%22%230d6efd%22 }">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body { background-color: #f8f9fa; font-family: system-ui, -apple-system, sans-serif; }
+    #reader { width: 100%; max-width: 450px; margin: 0 auto; min-height: 250px; background: #000; border-radius: 12px; overflow: hidden; }
+    .product-img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
+  </style>
+</head>
+<body class="p-2 p-md-3">
+
+<div class="container-fluid max-width-lg">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="m-0"><i class="bi bi-box-seam text-primary"></i> Pantry Manager</h3>
+    <div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="exportData()"><i class="bi bi-download"></i></button>
+      <input type="file" id="importFile" style="display:none" onchange="importData(event)">
+      <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('importFile').click()"><i class="bi bi-upload"></i></button>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <ul class="nav nav-pills nav-fill mb-3" id="pantryTabs">
+    <li class="nav-item">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#scan-tab"><i class="bi bi-qr-code-scan"></i> Scan</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#inventory-tab" onclick="renderInventory()"><i class="bi bi-list-check"></i> Απόθεμα</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#shopping-tab" onclick="renderShoppingList()"><i class="bi bi-cart3"></i> Αγορές</button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- TAB 1: SCANNER & FORM -->
+    <div class="tab-pane fade show active" id="scan-tab">
+      <div class="card shadow-sm p-3 mb-3">
+        <h6 class="card-title mb-2">Σκάναρισμα με Κάμερα</h6>
+        <div class="d-grid gap-2 mb-2">
+          <button class="btn btn-primary" onclick="startCamera()"><i class="bi bi-camera"></i> Άνοιγμα Κάμερας</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="stopCamera()" id="btnStopCam" style="display:none;">Κλείσιμο Κάμερας</button>
+        </div>
+        <div id="reader"></div>
+
+        <hr class="my-3">
+        <label class="form-label small text-muted">Χειροκίνητο Barcode (EAN):</label>
+        <div class="input-group">
+          <input type="number" id="manualBarcode" class="form-control" placeholder="π.χ. 5449000000996">
+          <button class="btn btn-secondary" onclick="fetchProductData(document.getElementById('manualBarcode').value)">Αναζήτηση</button>
+        </div>
+      </div>
+
+      <!-- Form Details -->
+      <div class="card shadow-sm p-3">
+        <h6 class="card-title mb-3">Στοιχεία Προϊόντος</h6>
+        <form id="productForm" onsubmit="saveProduct(event)">
+          <div class="mb-2">
+            <label class="form-label small">Barcode</label>
+            <input type="text" id="p_barcode" class="form-control" required readonly>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Όνομα Προϊόντος</label>
+            <input type="text" id="p_name" class="form-control" required>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col">
+              <label class="form-label small">Κατηγορία</label>
+              <select id="p_category" class="form-select">
+                <option>Γαλακτοκομικά</option>
+                <option>Κονσέρβες</option>
+                <option>Ζυμαρικά / Δημητριακά</option>
+                <option>Κατάψυξη</option>
+                <option>Αναψυκτικά / Ποτά</option>
+                <option>Λοιπά</option>
+              </select>
+            </div>
+            <div class="col">
+              <label class="form-label small">Τοποθεσία</label>
+              <select id="p_location" class="form-select">
+                <option>Ψυγείο</option>
+                <option>Ντουλάπι 1</option>
+                <option>Ντουλάπι 2</option>
+                <option>Κατάψυξη</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col">
+              <label class="form-label small">Ποσότητα</label>
+              <input type="number" id="p_qty" class="form-control" value="1" min="1" required>
+            </div>
+            <div class="col">
+              <label class="form-label small">Ελάχιστο Όριο</label>
+              <input type="number" id="p_min_qty" class="form-control" value="1" min="1" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Ημερομηνία Λήξης</label>
+            <input type="date" id="p_expiry" class="form-control">
+          </div>
+          <input type="hidden" id="p_image">
+          <button type="submit" class="btn btn-success w-100"><i class="bi bi-check-lg"></i> Αποθήκευση</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- TAB 2: INVENTORY -->
+    <div class="tab-pane fade" id="inventory-tab">
+      <div class="card shadow-sm p-2 mb-2">
+        <input type="text" id="searchInput" class="form-control mb-2" placeholder="Αναζήτηση..." oninput="renderInventory()">
+        <select id="filterCategory" class="form-select" onchange="renderInventory()">
+          <option value="">Όλες οι Κατηγορίες</option>
+          <option>Γαλακτοκομικά</option>
+          <option>Κονσέρβες</option>
+          <option>Ζυμαρικά / Δημητριακά</option>
+          <option>Κατάψυξη</option>          <option>Αναψυκτικά / Ποτά</option>
+          <option>Λοιπά</option>
+        </select>
+      </div>
+      <div id="inventoryCards"></div>
+    </div>
+
+    <!-- TAB 3: SHOPPING LIST -->
+    <div class="tab-pane fade" id="shopping-tab">
+      <div class="card shadow-sm p-3">
+        <h6 class="card-title text-danger mb-3"><i class="bi bi-cart-check"></i> Προϊόντα για Αγορά</h6>
+        <ul class="list-group" id="shoppingList"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  let html5QrCode = null;
+
+  function getPantry() { return JSON.parse(localStorage.getItem('pantry_mobile_data') || '[]'); }
+  function savePantry(data) { localStorage.setItem('pantry_mobile_data', JSON.stringify(data)); }
+
+  function startCamera() {
+    if(!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+    document.getElementById('btnStopCam').style.display = 'block';
+    
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 15, qrbox: { width: 250, height: 150 } },
+      (decodedText) => {
+        stopCamera();
+        fetchProductData(decodedText);
+      },
+      (err) => {}
+    ).catch(err => alert("Βεβαιωθείτε ότι δώσατε άδεια στην κάμερα."));
+  }
+
+  function stopCamera() {
+    if(html5QrCode && html5QrCode.isScanning) {
+      html5QrCode.stop().then(() => {
+        document.getElementById('btnStopCam').style.display = 'none';
+      });
+    }
+  }
+
+  async function fetchProductData(barcode) {
+    document.getElementById('p_barcode').value = barcode;
+    try {
+      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const data = await res.json();
+      if(data.status === 1) {
+        document.getElementById('p_name').value = data.product.product_name || '';
+        document.getElementById('p_image').value = data.product.image_front_small_url || '';
+      } else {
+        alert('Το προϊόν δεν βρέθηκε στο Open Food Facts. Συμπληρώστε τα στοιχεία.');
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  function saveProduct(e) {
+    e.preventDefault();
+    const pantry = getPantry();
+    const barcode = document.getElementById('p_barcode').value;
+    const newProd = {
+      barcode: barcode,
+      name: document.getElementById('p_name').value,
+      category: document.getElementById('p_category').value,
+      location: document.getElementById('p_location').value,
+      qty: parseInt(document.getElementById('p_qty').value),
+      min_qty: parseInt(document.getElementById('p_min_qty').value),
+      expiry: document.getElementById('p_expiry').value,
+      image: document.getElementById('p_image').value || 'https://via.placeholder.com/50'
+    };
+    const idx = pantry.findIndex(p => p.barcode === barcode);
+    if(idx >= 0) pantry[idx] = newProd; else pantry.push(newProd);
+    savePantry(pantry);
+    alert('Αποθηκεύτηκε!');
+    document.getElementById('productForm').reset();
+  }
+
+  function renderInventory() {
+    const pantry = getPantry();
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const cat = document.getElementById('filterCategory').value;
+    const container = document.getElementById('inventoryCards');
+    container.innerHTML = '';
+
+    pantry
+      .filter(p => p.name.toLowerCase().includes(search) && (cat === '' || p.category === cat))
+      .forEach((p, idx) => {
+        const card = document.createElement('div');
+        card.className = 'card mb-2 shadow-sm p-2';
+        card.innerHTML = `
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              <img src="${p.image}" class="product-img me-2">
+              <div>
+                <strong>${p.name}</strong><br>
+                <small class="text-muted">${p.category} | ${p.location}</small>
+              </div>
+            </div>
+            <div class="text-end">
+              <div>
+                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="updateQty(${idx}, -1)">-</button>
+                <span class="fw-bold mx-1">${p.qty}</span>
+                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="updateQty(${idx}, 1)">+</button>
+              </div>
+              <button class="btn btn-sm btn-link text-danger p-0 mt-1" onclick="deleteProd(${idx})"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+  }
+
+  function updateQty(idx, change) {
+    const pantry = getPantry();
+    pantry[idx].qty += change;
+    if(pantry[idx].qty <= 0) pantry.splice(idx, 1);
+    savePantry(pantry);
+    renderInventory();
+  }
+
+  function deleteProd(idx) {
+    const pantry = getPantry();
+    pantry.splice(idx, 1);
+    savePantry(pantry);
+    renderInventory();
+  }
+
+  function renderShoppingList() {
+    const pantry = getPantry();
+    const ul = document.getElementById('shoppingList');
+    ul.innerHTML = '';
+    pantry.filter(p => p.qty <= p.min_qty).forEach(p => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-center';
+      li.innerHTML = `<div><strong>${p.name}</strong><br><small class="text-muted">Υπόλοιπο: ${p.qty}</small></div><span class="badge bg-danger">Όριο: ${p.min_qty}</span>`;
+      ul.appendChild(li);
+    });
+  }
+
+  function exportData() {
+    const blob = new Blob([localStorage.getItem('pantry_mobile_data') || '[]'], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `pantry_backup.json`;
+    a.click();
+  }
+
+  function importData(e) {
+    const reader = new FileReader();
+    reader.onload = event => {
+      localStorage.setItem('pantry_mobile_data', event.target.result);
+      alert('Τα δεδομένα εισήχθησαν!');
+      renderInventory();
+    };
+    reader.readAsText(e.target.files[0]);
+  }
+</script>
+</body>
+</html>
