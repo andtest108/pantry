@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Pantry Manager Cloud</title>
+  <title>Smart Pantry Manager</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -19,8 +19,8 @@
 
 <div class="container-fluid max-width-lg">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="m-0"><i class="bi bi-box-seam text-primary"></i> Pantry Manager <span class="badge bg-primary fs-6">Cloud</span></h3>
-    <div id="connectionStatus" class="badge bg-success"><i class="bi bi-wifi"></i> Online</div>
+    <h3 class="m-0"><i class="bi bi-box-seam text-primary"></i> Pantry Manager</h3>
+    <div id="storageBadge" class="badge bg-info text-dark"><i class="bi bi-hdd"></i> Local Storage</div>
   </div>
 
   <!-- Navigation Tabs -->
@@ -29,10 +29,10 @@
       <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#scan-tab"><i class="bi bi-qr-code-scan"></i> Scan</button>
     </li>
     <li class="nav-item">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#inventory-tab"><i class="bi bi-list-check"></i> Απόθεμα</button>
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#inventory-tab" onclick="renderInventory()"><i class="bi bi-list-check"></i> Απόθεμα</button>
     </li>
     <li class="nav-item">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#shopping-tab"><i class="bi bi-cart3"></i> Αγορές</button>
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#shopping-tab" onclick="renderShoppingList()"><i class="bi bi-cart3"></i> Αγορές</button>
     </li>
   </ul>
 
@@ -63,21 +63,25 @@
         <label class="form-label small text-muted">Χειροκίνητο Barcode (EAN):</label>
         <div class="input-group">
           <input type="number" id="manualBarcode" class="form-control" placeholder="π.χ. 5449000000996">
-          <button class="btn btn-secondary" onclick="processBarcode(document.getElementById('manualBarcode').value)">Επεξεργασία</button>
+          <button class="btn btn-secondary" onclick="processBarcode(document.getElementById('manualBarcode').value)">Αναζήτηση</button>
         </div>
       </div>
 
       <!-- Product Details Form -->
       <div class="card shadow-sm p-3" id="formCard">
-        <h6 class="card-title mb-3">Στοιχεία Προϊόντος</h6>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="card-title m-0">Στοιχεία Προϊόντος</h6>
+          <button class="btn btn-sm btn-outline-danger" onclick="resetForm()"><i class="bi bi-x-circle"></i> Καθαρισμός</button>
+        </div>
+        
         <form id="productForm" onsubmit="saveProductForm(event)">
           <div class="mb-2">
             <label class="form-label small">Barcode</label>
-            <input type="text" id="p_barcode" class="form-control" required readonly>
+            <input type="text" id="p_barcode" class="form-control" required readonly placeholder="Σκανάρετε ένα barcode...">
           </div>
           <div class="mb-2">
             <label class="form-label small">Όνομα Προϊόντος</label>
-            <input type="text" id="p_name" class="form-control" required>
+            <input type="text" id="p_name" class="form-control" required placeholder="Όνομα προϊόντος">
           </div>
 
           <!-- Photo Capture Section -->
@@ -129,7 +133,7 @@
             <input type="date" id="p_expiry" class="form-control">
           </div>
           <input type="hidden" id="p_image">
-          <button type="submit" class="btn btn-success w-100"><i class="bi bi-cloud-upload"></i> Αποθήκευση & Εκμάθηση</button>
+          <button type="submit" class="btn btn-success w-100"><i class="bi bi-check-lg"></i> Αποθήκευση στο Απόθεμα</button>
         </form>
       </div>
     </div>
@@ -161,38 +165,55 @@
   </div>
 </div>
 
-<!-- Firebase SDKs (v9 Compat Mode) -->
+<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  // --- 1. FIREBASE CONFIGURATION ---
+  // --- 1. FIREBASE CONFIGURATION (YOUR PROJECT) ---
   const firebaseConfig = {
-  apiKey: "AIzaSyALm4dQG2MdbtcF6M7E-OOLLgmu1mZyMto",
-  authDomain: "pantryweb-45b7b.firebaseapp.com",
-  projectId: "pantryweb-45b7b",
-  storageBucket: "pantryweb-45b7b.firebasestorage.app",
-  messagingSenderId: "968413726562",
-  appId: "1:968413726562:web:ec93b9793d773e813d4e3b",
-  measurementId: "G-4HX7BE69CH"
-};
+    apiKey: "AIzaSyALm4dQG2MdbtcF6M7E-OOLLgmu1mZyMto",
+    authDomain: "pantryweb-45b7b.firebaseapp.com",
+    projectId: "pantryweb-45b7b",
+    storageBucket: "pantryweb-45b7b.firebasestorage.app",
+    messagingSenderId: "968413726562",
+    appId: "1:968413726562:web:ec93b9793d773e813d4e3b",
+    measurementId: "G-4HX7BE69CH"
+  };
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+  let db = null;
+  let useFirebase = false;
 
-  let globalPantry = [];
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    useFirebase = true;
+    document.getElementById('storageBadge').className = 'badge bg-success';
+    document.getElementById('storageBadge').innerHTML = '<i class="bi bi-cloud-check"></i> Cloud Storage';
+  } catch(e) { 
+    console.warn("Firebase config error. Falling back to LocalStorage.", e); 
+  }
+
   let html5QrCode = null;
 
-  // Real-time listener
-  db.collection("pantry").onSnapshot((snapshot) => {
-    globalPantry = [];
-    snapshot.forEach((doc) => {
-      globalPantry.push({ id: doc.id, ...doc.data() });
-    });
-    renderInventory();
-    renderShoppingList();
-  });
+  function getLocalData(key) { return JSON.parse(localStorage.getItem(key) || '[]'); }
+  function setLocalData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+
+  window.onload = function() {
+    if (useFirebase) {
+      db.collection("pantry").onSnapshot((snapshot) => {
+        let pantry = [];
+        snapshot.forEach(doc => pantry.push({ id: doc.id, ...doc.data() }));
+        setLocalData('pantry_data', pantry);
+        renderInventory();
+        renderShoppingList();
+      }, (err) => console.error("Firebase Listener Error:", err));
+    } else {
+      renderInventory();
+      renderShoppingList();
+    }
+  };
 
   // --- 2. CAMERA & SCANNER ---
   function startCamera() {
@@ -218,7 +239,17 @@
     }
   }
 
-  // --- 3. PHOTO CAPTURE & RESIZING ENGINE ---
+  function resetForm() {
+    document.getElementById('p_barcode').value = '';
+    document.getElementById('p_name').value = '';
+    document.getElementById('p_qty').value = 1;
+    document.getElementById('p_min_qty').value = 1;
+    document.getElementById('p_expiry').value = '';
+    document.getElementById('p_image').value = '';
+    document.getElementById('p_preview').src = 'https://via.placeholder.com/80?text=No+Image';
+  }
+
+  // --- 3. PHOTO CAPTURE ENGINE ---
   function handlePhotoCapture(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -227,11 +258,9 @@
     reader.onload = function(event) {
       const img = new Image();
       img.onload = function() {
-        // Resize image to max 400px to optimize database storage
         const canvas = document.createElement('canvas');
-        const maxDim = 400;
-        let width = img.width;
-        let height = img.height;
+        const maxDim = 350;
+        let width = img.width, height = img.height;
 
         if (width > height) {
           if (width > maxDim) { height *= maxDim / width; width = maxDim; }
@@ -244,7 +273,7 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        const base64Image = canvas.toDataURL('image/jpeg', 0.7);
+        const base64Image = canvas.toDataURL('image/jpeg', 0.6);
         document.getElementById('p_image').value = base64Image;
         document.getElementById('p_preview').src = base64Image;
       };
@@ -255,6 +284,7 @@
 
   // --- 4. BARCODE PROCESSING ENGINE ---
   async function processBarcode(barcode) {
+    if (!barcode) return;
     const mode = document.querySelector('input[name="scanMode"]:checked').value;
 
     if (mode === 'checkout') {
@@ -265,71 +295,102 @@
   }
 
   async function handleCheckOut(barcode) {
-    const existing = globalPantry.find(p => p.barcode === barcode);
+    const pantry = getLocalData('pantry_data');
+    const existing = pantry.find(p => p.barcode === barcode);
     if (!existing) {
       alert("Το προϊόν δεν βρέθηκε στο απόθεμά σας!");
       return;
     }
 
     if (existing.qty > 1) {
-      await db.collection("pantry").doc(existing.id).update({
-        qty: existing.qty - 1
-      });
-      alert(`Αφαιρέθηκε 1 τεμάχιο από: ${existing.name}. Νέο υπόλοιπο: ${existing.qty - 1}`);
+      existing.qty -= 1;
+      if (useFirebase && existing.id) {
+        await db.collection("pantry").doc(existing.id).update({ qty: existing.qty });
+      } else {
+        setLocalData('pantry_data', pantry);
+        renderInventory();
+      }
+      alert(`Αφαιρέθηκε 1 τεμάχιο από: ${existing.name}. Νέο υπόλοιπο: ${existing.qty}`);
     } else {
       if (confirm(`Το προϊόν "${existing.name}" έφτασε στο 0. Θέλετε να το διαγράψετε από το απόθεμα;`)) {
-        await db.collection("pantry").doc(existing.id).delete();
-      } else {
-        await db.collection("pantry").doc(existing.id).update({ qty: 0 });
+        if (useFirebase && existing.id) {
+          await db.collection("pantry").doc(existing.id).delete();
+        } else {
+          const idx = pantry.findIndex(p => p.barcode === barcode);
+          pantry.splice(idx, 1);
+          setLocalData('pantry_data', pantry);
+          renderInventory();
+        }
       }
     }
   }
 
   async function handleCheckIn(barcode) {
+    resetForm();
     document.getElementById('p_barcode').value = barcode;
-    
-    // Clear preview
-    document.getElementById('p_preview').src = 'https://via.placeholder.com/80?text=No+Image';
-    document.getElementById('p_image').value = '';
+    document.getElementById('p_name').placeholder = "Αναζήτηση στο API...";
+
+    const pantry = getLocalData('pantry_data');
+    const customList = getLocalData('custom_products');
 
     // 1. Check current Pantry
-    const existingInPantry = globalPantry.find(p => p.barcode === barcode);
+    const existingInPantry = pantry.find(p => p.barcode === barcode);
     if (existingInPantry) {
       populateForm(existingInPantry);
       return;
     }
 
-    // 2. Check Custom Learning Database (Firestore)
-    const customDoc = await db.collection("custom_products").doc(barcode).get();
-    if (customDoc.exists) {
-      const customData = customDoc.data();
-      populateForm({
-        barcode: barcode,
-        name: customData.name,
-        category: customData.category,
-        location: customData.location || 'Ψυγείο',
-        qty: 1,
-        min_qty: 1,
-        image: customData.image || ''
-      });
+    // 2. Check Custom Learned Products (Local or Cloud)
+    const customLocal = customList.find(c => c.barcode === barcode);
+    if (customLocal) {
+      populateForm(customLocal);
       return;
     }
 
-    // 3. Fallback to Open Food Facts API
-    try {
-      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-      const data = await res.json();
-      if (data.status === 1) {
-        document.getElementById('p_name').value = data.product.product_name || '';
-        const imgUrl = data.product.image_front_small_url || '';
-        document.getElementById('p_image').value = imgUrl;
-        document.getElementById('p_preview').src = imgUrl || 'https://via.placeholder.com/80?text=No+Image';
-        document.getElementById('p_qty').value = 1;
-      } else {
-        alert('Το προϊόν δεν βρέθηκε. Βγάλτε το μια φωτογραφία και συμπληρώστε το όνομα για να το "μάθει" η εφαρμογή!');
-        document.getElementById('p_name').value = '';
-      }
-    } catch(e) { console.error(e); }
+    if (useFirebase) {
+      try {
+        const customDoc = await db.collection("custom_products").doc(barcode).get();
+        if (customDoc.exists) {
+          populateForm({ barcode, ...customDoc.data() });
+          return;
+        }
+      } catch(e) { console.error("Firestore lookup error", e); }
+    }
+
+    // 3. Open Food Facts API Search with Fallback Domains
+    let found = false;
+    const apiUrls = [
+      `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
+      `https://el.openfoodfacts.org/api/v0/product/${barcode}.json`
+    ];
+
+    for (let url of apiUrls) {
+      if (found) break;
+      try {
+        const res = await fetch(url, { headers: { 'User-Agent': 'SmartPantryManagerApp - Web - Version 1.0' } });
+        const data = await res.json();
+        
+        if (data.status === 1 && data.product) {
+          const prod = data.product;
+          const name = prod.product_name_el || prod.product_name || prod.generic_name_el || prod.generic_name || prod.product_name_en || '';
+          const img = prod.image_front_small_url || prod.image_url || prod.image_front_url || '';
+
+          if (name) {
+            document.getElementById('p_name').value = name;
+            document.getElementById('p_image').value = img;
+            document.getElementById('p_preview').src = img || 'https://via.placeholder.com/80?text=No+Image';
+            document.getElementById('p_qty').value = 1;
+            found = true;
+          }
+        }
+      } catch(e) { console.error("API error:", e); }
+    }
+
+    if (!found) {
+      document.getElementById('p_name').placeholder = "Όνομα προϊόντος (Πληκτρολογήστε το)";
+      alert('Το προϊόν δεν υπάρχει στη διεθνή βάση. Πληκτρολογήστε το όνομά του και βγάλτε μια φωτογραφία — η εφαρμογή θα το "μάθει" για πάντα!');
+      document.getElementById('p_name').focus();
+    }
   }
 
   function populateForm(data) {
@@ -343,7 +404,7 @@
     document.getElementById('p_preview').src = data.image || 'https://via.placeholder.com/80?text=No+Image';
   }
 
-  // --- 5. SAVE & LEARN ---
+  // --- 5. SAVE & LEARN ENGINE ---
   async function saveProductForm(e) {
     e.preventDefault();
     const barcode = document.getElementById('p_barcode').value;
@@ -355,39 +416,52 @@
     const expiry = document.getElementById('p_expiry').value;
     const image = document.getElementById('p_image').value || 'https://via.placeholder.com/80?text=No+Image';
 
-    const prodData = { barcode, name, category, location, qty, min_qty, expiry, image, updatedAt: new Date() };
+    if (!barcode) { alert("Παρακαλώ σκανάρετε ή εισάγετε ένα Barcode."); return; }
 
-    // Save to Pantry
-    const existing = globalPantry.find(p => p.barcode === barcode);
-    if (existing) {
-      await db.collection("pantry").doc(existing.id).set(prodData);
-    } else {
-      await db.collection("pantry").add(prodData);
+    const prodData = { barcode, name, category, location, qty, min_qty, expiry, image, updatedAt: new Date().toISOString() };
+
+    // Save to LocalStorage
+    const pantry = getLocalData('pantry_data');
+    const existingIdx = pantry.findIndex(p => p.barcode === barcode);
+    if (existingIdx >= 0) { pantry[existingIdx] = prodData; } else { pantry.push(prodData); }
+    setLocalData('pantry_data', pantry);
+
+    // Save to Custom Learned Products
+    const customList = getLocalData('custom_products');
+    const cIdx = customList.findIndex(c => c.barcode === barcode);
+    const customItem = { barcode, name, category, location, image };
+    if (cIdx >= 0) customList[cIdx] = customItem; else customList.push(customItem);
+    setLocalData('custom_products', customList);
+
+    // Save to Firebase Cloud
+    if (useFirebase) {
+      try {
+        if (existingIdx >= 0 && pantry[existingIdx].id) {
+          await db.collection("pantry").doc(pantry[existingIdx].id).set(prodData);
+        } else {
+          await db.collection("pantry").add(prodData);
+        }
+        await db.collection("custom_products").doc(barcode).set(customItem);
+      } catch(err) { console.error("Firebase write error:", err); }
     }
 
-    // "Learn" product & save custom photo for future scans
-    await db.collection("custom_products").doc(barcode).set({
-      name: name,
-      category: category,
-      location: location,
-      image: image
-    });
-
-    alert('Το προϊόν και η φωτογραφία του αποθηκεύτηκαν στο Cloud!');
-    document.getElementById('productForm').reset();
-    document.getElementById('p_preview').src = 'https://via.placeholder.com/80?text=No+Image';
+    alert('Το προϊόν αποθηκεύτηκε στο Cloud!');
+    resetForm();
+    renderInventory();
   }
 
   // --- 6. RENDER FUNCTIONS ---
   function renderInventory() {
-    const search = document.getElementById('searchInput').value.toLowerCase();
-    const cat = document.getElementById('filterCategory').value;
+    const pantry = getLocalData('pantry_data');
+    const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+    const cat = document.getElementById('filterCategory')?.value || '';
     const container = document.getElementById('inventoryCards');
+    if (!container) return;
     container.innerHTML = '';
 
-    globalPantry
+    pantry
       .filter(p => p.name.toLowerCase().includes(search) && (cat === '' || p.category === cat))
-      .forEach((p) => {
+      .forEach((p, idx) => {
         const card = document.createElement('div');
         card.className = 'card mb-2 shadow-sm p-2';
         card.innerHTML = `
@@ -401,11 +475,11 @@
             </div>
             <div class="text-end">
               <div>
-                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="changeQty('${p.id}', ${p.qty - 1})">-</button>
+                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="changeQty(${idx}, -1)">-</button>
                 <span class="fw-bold mx-1">${p.qty}</span>
-                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="changeQty('${p.id}', ${p.qty + 1})">+</button>
+                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="changeQty(${idx}, 1)">+</button>
               </div>
-              <button class="btn btn-sm btn-link text-danger p-0 mt-1" onclick="deleteDoc('${p.id}')"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-link text-danger p-0 mt-1" onclick="deleteProd(${idx})"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         `;
@@ -413,24 +487,31 @@
       });
   }
 
-  async function changeQty(id, newQty) {
-    if (newQty <= 0) {
-      deleteDoc(id);
-    } else {
-      await db.collection("pantry").doc(id).update({ qty: newQty });
+  function changeQty(idx, change) {
+    const pantry = getLocalData('pantry_data');
+    pantry[idx].qty += change;
+    if (pantry[idx].qty <= 0) {
+      pantry.splice(idx, 1);
     }
+    setLocalData('pantry_data', pantry);
+    renderInventory();
   }
 
-  async function deleteDoc(id) {
+  function deleteProd(idx) {
     if (confirm("Διαγραφή προϊόντος από το απόθεμα;")) {
-      await db.collection("pantry").doc(id).delete();
+      const pantry = getLocalData('pantry_data');
+      pantry.splice(idx, 1);
+      setLocalData('pantry_data', pantry);
+      renderInventory();
     }
   }
 
   function renderShoppingList() {
+    const pantry = getLocalData('pantry_data');
     const ul = document.getElementById('shoppingList');
+    if (!ul) return;
     ul.innerHTML = '';
-    globalPantry.filter(p => p.qty <= p.min_qty).forEach(p => {
+    pantry.filter(p => p.qty <= p.min_qty).forEach(p => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-center';
       li.innerHTML = `<div><strong>${p.name}</strong><br><small class="text-muted">Υπόλοιπο: ${p.qty}</small></div><span class="badge bg-danger">Όριο: ${p.min_qty}</span>`;
