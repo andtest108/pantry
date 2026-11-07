@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Pantry Manager</title>
-  <!-- Web App Manifest for Mobile/PWA -->
-  <link rel="manifest" href="data:application/json,{ %22name%22:%22Smart%20Pantry%22,%22short_name%22:%22Pantry%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23ffffff%22,%22theme_color%22:%22%230d6efd%22 }">
+  <title>Smart Pantry Manager Cloud</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -13,18 +11,16 @@
     body { background-color: #f8f9fa; font-family: system-ui, -apple-system, sans-serif; }
     #reader { width: 100%; max-width: 450px; margin: 0 auto; min-height: 250px; background: #000; border-radius: 12px; overflow: hidden; }
     .product-img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
+    .preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px dashed #0d6efd; }
+    .scan-mode-btn { font-weight: bold; }
   </style>
 </head>
 <body class="p-2 p-md-3">
 
 <div class="container-fluid max-width-lg">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="m-0"><i class="bi bi-box-seam text-primary"></i> Pantry Manager</h3>
-    <div>
-      <button class="btn btn-sm btn-outline-secondary" onclick="exportData()"><i class="bi bi-download"></i></button>
-      <input type="file" id="importFile" style="display:none" onchange="importData(event)">
-      <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('importFile').click()"><i class="bi bi-upload"></i></button>
-    </div>
+    <h3 class="m-0"><i class="bi bi-box-seam text-primary"></i> Pantry Manager <span class="badge bg-primary fs-6">Cloud</span></h3>
+    <div id="connectionStatus" class="badge bg-success"><i class="bi bi-wifi"></i> Online</div>
   </div>
 
   <!-- Navigation Tabs -->
@@ -33,21 +29,33 @@
       <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#scan-tab"><i class="bi bi-qr-code-scan"></i> Scan</button>
     </li>
     <li class="nav-item">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#inventory-tab" onclick="renderInventory()"><i class="bi bi-list-check"></i> Απόθεμα</button>
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#inventory-tab"><i class="bi bi-list-check"></i> Απόθεμα</button>
     </li>
     <li class="nav-item">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#shopping-tab" onclick="renderShoppingList()"><i class="bi bi-cart3"></i> Αγορές</button>
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#shopping-tab"><i class="bi bi-cart3"></i> Αγορές</button>
     </li>
   </ul>
 
   <div class="tab-content">
     <!-- TAB 1: SCANNER & FORM -->
     <div class="tab-pane fade show active" id="scan-tab">
+      
+      <!-- Scan Mode Selector -->
+      <div class="card shadow-sm p-3 mb-3 text-center">
+        <label class="form-label fw-bold mb-2">Επιλογή Λειτουργίας Σκαναρίσματος:</label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="scanMode" id="modeCheckIn" value="checkin" checked>
+          <label class="btn btn-outline-success scan-mode-btn" for="modeCheckIn"><i class="bi bi-plus-circle"></i> Check-In (Προσθήκη)</label>
+
+          <input type="radio" class="btn-check" name="scanMode" id="modeCheckOut" value="checkout">
+          <label class="btn btn-outline-danger scan-mode-btn" for="modeCheckOut"><i class="bi bi-dash-circle"></i> Check-Out (Αφαίρεση)</label>
+        </div>
+      </div>
+
       <div class="card shadow-sm p-3 mb-3">
-        <h6 class="card-title mb-2">Σκάναρισμα με Κάμερα</h6>
         <div class="d-grid gap-2 mb-2">
-          <button class="btn btn-primary" onclick="startCamera()"><i class="bi bi-camera"></i> Άνοιγμα Κάμερας</button>
-          <button class="btn btn-outline-secondary btn-sm" onclick="stopCamera()" id="btnStopCam" style="display:none;">Κλείσιμο Κάμερας</button>
+          <button class="btn btn-primary" onclick="startCamera()"><i class="bi bi-camera"></i> Άνοιγμα Scanner Barcode</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="stopCamera()" id="btnStopCam" style="display:none;">Κλείσιμο Scanner</button>
         </div>
         <div id="reader"></div>
 
@@ -55,14 +63,14 @@
         <label class="form-label small text-muted">Χειροκίνητο Barcode (EAN):</label>
         <div class="input-group">
           <input type="number" id="manualBarcode" class="form-control" placeholder="π.χ. 5449000000996">
-          <button class="btn btn-secondary" onclick="fetchProductData(document.getElementById('manualBarcode').value)">Αναζήτηση</button>
+          <button class="btn btn-secondary" onclick="processBarcode(document.getElementById('manualBarcode').value)">Επεξεργασία</button>
         </div>
       </div>
 
-      <!-- Form Details -->
-      <div class="card shadow-sm p-3">
+      <!-- Product Details Form -->
+      <div class="card shadow-sm p-3" id="formCard">
         <h6 class="card-title mb-3">Στοιχεία Προϊόντος</h6>
-        <form id="productForm" onsubmit="saveProduct(event)">
+        <form id="productForm" onsubmit="saveProductForm(event)">
           <div class="mb-2">
             <label class="form-label small">Barcode</label>
             <input type="text" id="p_barcode" class="form-control" required readonly>
@@ -71,6 +79,19 @@
             <label class="form-label small">Όνομα Προϊόντος</label>
             <input type="text" id="p_name" class="form-control" required>
           </div>
+
+          <!-- Photo Capture Section -->
+          <div class="mb-3">
+            <label class="form-label small d-block">Φωτογραφία Προϊόντος</label>
+            <div class="d-flex align-items-center gap-3">
+              <input type="file" id="p_photo_input" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoCapture(event)">
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('p_photo_input').click()">
+                <i class="bi bi-camera-fill"></i> Λήψη Φωτογραφίας
+              </button>
+              <img id="p_preview" src="https://via.placeholder.com/80?text=No+Image" class="preview-img">
+            </div>
+          </div>
+
           <div class="row g-2 mb-2">
             <div class="col">
               <label class="form-label small">Κατηγορία</label>
@@ -108,7 +129,7 @@
             <input type="date" id="p_expiry" class="form-control">
           </div>
           <input type="hidden" id="p_image">
-          <button type="submit" class="btn btn-success w-100"><i class="bi bi-check-lg"></i> Αποθήκευση</button>
+          <button type="submit" class="btn btn-success w-100"><i class="bi bi-cloud-upload"></i> Αποθήκευση & Εκμάθηση</button>
         </form>
       </div>
     </div>
@@ -122,7 +143,8 @@
           <option>Γαλακτοκομικά</option>
           <option>Κονσέρβες</option>
           <option>Ζυμαρικά / Δημητριακά</option>
-          <option>Κατάψυξη</option>          <option>Αναψυκτικά / Ποτά</option>
+          <option>Κατάψυξη</option>
+          <option>Αναψυκτικά / Ποτά</option>
           <option>Λοιπά</option>
         </select>
       </div>
@@ -132,20 +154,46 @@
     <!-- TAB 3: SHOPPING LIST -->
     <div class="tab-pane fade" id="shopping-tab">
       <div class="card shadow-sm p-3">
-        <h6 class="card-title text-danger mb-3"><i class="bi bi-cart-check"></i> Προϊόντα για Αγορά</h6>
+        <h6 class="card-title text-danger mb-3"><i class="bi bi-cart-check"></i> Προϊόντα για Αγορά (Ελλείψεις)</h6>
         <ul class="list-group" id="shoppingList"></ul>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Firebase SDKs (v9 Compat Mode) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
+  // --- 1. FIREBASE CONFIGURATION ---
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  let globalPantry = [];
   let html5QrCode = null;
 
-  function getPantry() { return JSON.parse(localStorage.getItem('pantry_mobile_data') || '[]'); }
-  function savePantry(data) { localStorage.setItem('pantry_mobile_data', JSON.stringify(data)); }
+  // Real-time listener
+  db.collection("pantry").onSnapshot((snapshot) => {
+    globalPantry = [];
+    snapshot.forEach((doc) => {
+      globalPantry.push({ id: doc.id, ...doc.data() });
+    });
+    renderInventory();
+    renderShoppingList();
+  });
 
+  // --- 2. CAMERA & SCANNER ---
   function startCamera() {
     if(!html5QrCode) html5QrCode = new Html5Qrcode("reader");
     document.getElementById('btnStopCam').style.display = 'block';
@@ -155,10 +203,10 @@
       { fps: 15, qrbox: { width: 250, height: 150 } },
       (decodedText) => {
         stopCamera();
-        fetchProductData(decodedText);
+        processBarcode(decodedText);
       },
       (err) => {}
-    ).catch(err => alert("Βεβαιωθείτε ότι δώσατε άδεια στην κάμερα."));
+    ).catch(err => alert("Δώστε άδεια πρόσβασης στην κάμερα."));
   }
 
   function stopCamera() {
@@ -169,51 +217,176 @@
     }
   }
 
-  async function fetchProductData(barcode) {
+  // --- 3. PHOTO CAPTURE & RESIZING ENGINE ---
+  function handlePhotoCapture(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const img = new Image();
+      img.onload = function() {
+        // Resize image to max 400px to optimize database storage
+        const canvas = document.createElement('canvas');
+        const maxDim = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) { height *= maxDim / width; width = maxDim; }
+        } else {
+          if (height > maxDim) { width *= maxDim / height; height = maxDim; }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const base64Image = canvas.toDataURL('image/jpeg', 0.7);
+        document.getElementById('p_image').value = base64Image;
+        document.getElementById('p_preview').src = base64Image;
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // --- 4. BARCODE PROCESSING ENGINE ---
+  async function processBarcode(barcode) {
+    const mode = document.querySelector('input[name="scanMode"]:checked').value;
+
+    if (mode === 'checkout') {
+      await handleCheckOut(barcode);
+    } else {
+      await handleCheckIn(barcode);
+    }
+  }
+
+  async function handleCheckOut(barcode) {
+    const existing = globalPantry.find(p => p.barcode === barcode);
+    if (!existing) {
+      alert("Το προϊόν δεν βρέθηκε στο απόθεμά σας!");
+      return;
+    }
+
+    if (existing.qty > 1) {
+      await db.collection("pantry").doc(existing.id).update({
+        qty: existing.qty - 1
+      });
+      alert(`Αφαιρέθηκε 1 τεμάχιο από: ${existing.name}. Νέο υπόλοιπο: ${existing.qty - 1}`);
+    } else {
+      if (confirm(`Το προϊόν "${existing.name}" έφτασε στο 0. Θέλετε να το διαγράψετε από το απόθεμα;`)) {
+        await db.collection("pantry").doc(existing.id).delete();
+      } else {
+        await db.collection("pantry").doc(existing.id).update({ qty: 0 });
+      }
+    }
+  }
+
+  async function handleCheckIn(barcode) {
     document.getElementById('p_barcode').value = barcode;
+    
+    // Clear preview
+    document.getElementById('p_preview').src = 'https://via.placeholder.com/80?text=No+Image';
+    document.getElementById('p_image').value = '';
+
+    // 1. Check current Pantry
+    const existingInPantry = globalPantry.find(p => p.barcode === barcode);
+    if (existingInPantry) {
+      populateForm(existingInPantry);
+      return;
+    }
+
+    // 2. Check Custom Learning Database (Firestore)
+    const customDoc = await db.collection("custom_products").doc(barcode).get();
+    if (customDoc.exists) {
+      const customData = customDoc.data();
+      populateForm({
+        barcode: barcode,
+        name: customData.name,
+        category: customData.category,
+        location: customData.location || 'Ψυγείο',
+        qty: 1,
+        min_qty: 1,
+        image: customData.image || ''
+      });
+      return;
+    }
+
+    // 3. Fallback to Open Food Facts API
     try {
       const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
       const data = await res.json();
-      if(data.status === 1) {
+      if (data.status === 1) {
         document.getElementById('p_name').value = data.product.product_name || '';
-        document.getElementById('p_image').value = data.product.image_front_small_url || '';
+        const imgUrl = data.product.image_front_small_url || '';
+        document.getElementById('p_image').value = imgUrl;
+        document.getElementById('p_preview').src = imgUrl || 'https://via.placeholder.com/80?text=No+Image';
+        document.getElementById('p_qty').value = 1;
       } else {
-        alert('Το προϊόν δεν βρέθηκε στο Open Food Facts. Συμπληρώστε τα στοιχεία.');
+        alert('Το προϊόν δεν βρέθηκε. Βγάλτε το μια φωτογραφία και συμπληρώστε το όνομα για να το "μάθει" η εφαρμογή!');
+        document.getElementById('p_name').value = '';
       }
     } catch(e) { console.error(e); }
   }
 
-  function saveProduct(e) {
-    e.preventDefault();
-    const pantry = getPantry();
-    const barcode = document.getElementById('p_barcode').value;
-    const newProd = {
-      barcode: barcode,
-      name: document.getElementById('p_name').value,
-      category: document.getElementById('p_category').value,
-      location: document.getElementById('p_location').value,
-      qty: parseInt(document.getElementById('p_qty').value),
-      min_qty: parseInt(document.getElementById('p_min_qty').value),
-      expiry: document.getElementById('p_expiry').value,
-      image: document.getElementById('p_image').value || 'https://via.placeholder.com/50'
-    };
-    const idx = pantry.findIndex(p => p.barcode === barcode);
-    if(idx >= 0) pantry[idx] = newProd; else pantry.push(newProd);
-    savePantry(pantry);
-    alert('Αποθηκεύτηκε!');
-    document.getElementById('productForm').reset();
+  function populateForm(data) {
+    document.getElementById('p_name').value = data.name || '';
+    document.getElementById('p_category').value = data.category || 'Γαλακτοκομικά';
+    document.getElementById('p_location').value = data.location || 'Ψυγείο';
+    document.getElementById('p_qty').value = data.qty || 1;
+    document.getElementById('p_min_qty').value = data.min_qty || 1;
+    document.getElementById('p_expiry').value = data.expiry || '';
+    document.getElementById('p_image').value = data.image || '';
+    document.getElementById('p_preview').src = data.image || 'https://via.placeholder.com/80?text=No+Image';
   }
 
+  // --- 5. SAVE & LEARN ---
+  async function saveProductForm(e) {
+    e.preventDefault();
+    const barcode = document.getElementById('p_barcode').value;
+    const name = document.getElementById('p_name').value;
+    const category = document.getElementById('p_category').value;
+    const location = document.getElementById('p_location').value;
+    const qty = parseInt(document.getElementById('p_qty').value);
+    const min_qty = parseInt(document.getElementById('p_min_qty').value);
+    const expiry = document.getElementById('p_expiry').value;
+    const image = document.getElementById('p_image').value || 'https://via.placeholder.com/80?text=No+Image';
+
+    const prodData = { barcode, name, category, location, qty, min_qty, expiry, image, updatedAt: new Date() };
+
+    // Save to Pantry
+    const existing = globalPantry.find(p => p.barcode === barcode);
+    if (existing) {
+      await db.collection("pantry").doc(existing.id).set(prodData);
+    } else {
+      await db.collection("pantry").add(prodData);
+    }
+
+    // "Learn" product & save custom photo for future scans
+    await db.collection("custom_products").doc(barcode).set({
+      name: name,
+      category: category,
+      location: location,
+      image: image
+    });
+
+    alert('Το προϊόν και η φωτογραφία του αποθηκεύτηκαν στο Cloud!');
+    document.getElementById('productForm').reset();
+    document.getElementById('p_preview').src = 'https://via.placeholder.com/80?text=No+Image';
+  }
+
+  // --- 6. RENDER FUNCTIONS ---
   function renderInventory() {
-    const pantry = getPantry();
     const search = document.getElementById('searchInput').value.toLowerCase();
     const cat = document.getElementById('filterCategory').value;
     const container = document.getElementById('inventoryCards');
     container.innerHTML = '';
 
-    pantry
+    globalPantry
       .filter(p => p.name.toLowerCase().includes(search) && (cat === '' || p.category === cat))
-      .forEach((p, idx) => {
+      .forEach((p) => {
         const card = document.createElement('div');
         card.className = 'card mb-2 shadow-sm p-2';
         card.innerHTML = `
@@ -227,11 +400,11 @@
             </div>
             <div class="text-end">
               <div>
-                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="updateQty(${idx}, -1)">-</button>
+                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="changeQty('${p.id}', ${p.qty - 1})">-</button>
                 <span class="fw-bold mx-1">${p.qty}</span>
-                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="updateQty(${idx}, 1)">+</button>
+                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="changeQty('${p.id}', ${p.qty + 1})">+</button>
               </div>
-              <button class="btn btn-sm btn-link text-danger p-0 mt-1" onclick="deleteProd(${idx})"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-link text-danger p-0 mt-1" onclick="deleteDoc('${p.id}')"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         `;
@@ -239,49 +412,29 @@
       });
   }
 
-  function updateQty(idx, change) {
-    const pantry = getPantry();
-    pantry[idx].qty += change;
-    if(pantry[idx].qty <= 0) pantry.splice(idx, 1);
-    savePantry(pantry);
-    renderInventory();
+  async function changeQty(id, newQty) {
+    if (newQty <= 0) {
+      deleteDoc(id);
+    } else {
+      await db.collection("pantry").doc(id).update({ qty: newQty });
+    }
   }
 
-  function deleteProd(idx) {
-    const pantry = getPantry();
-    pantry.splice(idx, 1);
-    savePantry(pantry);
-    renderInventory();
+  async function deleteDoc(id) {
+    if (confirm("Διαγραφή προϊόντος από το απόθεμα;")) {
+      await db.collection("pantry").doc(id).delete();
+    }
   }
 
   function renderShoppingList() {
-    const pantry = getPantry();
     const ul = document.getElementById('shoppingList');
     ul.innerHTML = '';
-    pantry.filter(p => p.qty <= p.min_qty).forEach(p => {
+    globalPantry.filter(p => p.qty <= p.min_qty).forEach(p => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-center';
       li.innerHTML = `<div><strong>${p.name}</strong><br><small class="text-muted">Υπόλοιπο: ${p.qty}</small></div><span class="badge bg-danger">Όριο: ${p.min_qty}</span>`;
       ul.appendChild(li);
     });
-  }
-
-  function exportData() {
-    const blob = new Blob([localStorage.getItem('pantry_mobile_data') || '[]'], {type: 'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `pantry_backup.json`;
-    a.click();
-  }
-
-  function importData(e) {
-    const reader = new FileReader();
-    reader.onload = event => {
-      localStorage.setItem('pantry_mobile_data', event.target.result);
-      alert('Τα δεδομένα εισήχθησαν!');
-      renderInventory();
-    };
-    reader.readAsText(e.target.files[0]);
   }
 </script>
 </body>
