@@ -13,6 +13,7 @@
     .product-img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
     .preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px dashed #0d6efd; }
     .scan-mode-btn { font-weight: bold; }
+    .qty-input { width: 60px; text-align: center; }
   </style>
 </head>
 <body class="p-2 p-md-3">
@@ -144,7 +145,7 @@
           <div class="row g-2 mb-2">
             <div class="col">
               <label class="form-label small">Ποσότητα</label>
-              <input type="number" id="p_qty" class="form-control" value="1" min="1" required>
+              <input type="number" id="p_qty" class="form-control" value="1" min="0" required>
             </div>
             <div class="col">
               <label class="form-label small">Ελάχιστο Όριο</label>
@@ -398,7 +399,7 @@
       } catch(e) { console.error("Firestore lookup error", e); }
     }
 
-    // 3. Multi-API Search Engine (Food, Beauty/Personal Care, Household Products)
+    // 3. Multi-API Search Engine
     let found = false;
     const apiEndPoints = [
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
@@ -414,7 +415,6 @@
         const res = await fetch(url, { headers: { 'User-Agent': 'SmartPantryManagerProApp - Web - Version 2.0' } });
         const data = await res.json();
         
-        // Handling Open Facts APIs (Food, Beauty, Products)
         if (data.status === 1 && data.product) {
           const prod = data.product;
           const name = prod.product_name_el || prod.product_name || prod.generic_name_el || prod.generic_name || prod.product_name_en || '';
@@ -428,7 +428,6 @@
             found = true;
           }
         } 
-        // Handling UPCitemdb API
         else if (data.items && data.items.length > 0) {
           const item = data.items[0];
           const name = item.title || '';
@@ -478,20 +477,17 @@
 
     const prodData = { barcode, name, category, location, qty, min_qty, expiry, image, updatedAt: new Date().toISOString() };
 
-    // Save to LocalStorage
     const pantry = getLocalData('pantry_data');
     const existingIdx = pantry.findIndex(p => p.barcode === barcode);
     if (existingIdx >= 0) { pantry[existingIdx] = prodData; } else { pantry.push(prodData); }
     setLocalData('pantry_data', pantry);
 
-    // Save to Custom Learned Products
     const customList = getLocalData('custom_products');
     const cIdx = customList.findIndex(c => c.barcode === barcode);
     const customItem = { barcode, name, category, location, image };
     if (cIdx >= 0) customList[cIdx] = customItem; else customList.push(customItem);
     setLocalData('custom_products', customList);
 
-    // Save to Firebase Cloud
     if (useFirebase) {
       try {
         if (existingIdx >= 0 && pantry[existingIdx].id) {
@@ -508,7 +504,39 @@
     renderInventory();
   }
 
-  // --- 6. RENDER FUNCTIONS ---
+  // --- 6. INVENTORY MANUAL QTY UPDATE ENGINE ---
+  async function saveManualQty(idx) {
+    const pantry = getLocalData('pantry_data');
+    const inputField = document.getElementById(`qty_input_${idx}`);
+    if (!inputField) return;
+
+    const newQty = parseInt(inputField.value);
+    if (isNaN(newQty) || newQty < 0) {
+      alert("Παρακαλώ εισάγετε έναν έγκυρο αριθμό ποσότητας.");
+      return;
+    }
+
+    pantry[idx].qty = newQty;
+
+    if (newQty === 0) {
+      if (confirm(`Η ποσότητα του "${pantry[idx].name}" είναι 0. Θέλετε να διαγραφεί από το απόθεμα;`)) {
+        if (useFirebase && pantry[idx].id) {
+          await db.collection("pantry").doc(pantry[idx].id).delete();
+        }
+        pantry.splice(idx, 1);
+      }
+    } else {
+      if (useFirebase && pantry[idx].id) {
+        await db.collection("pantry").doc(pantry[idx].id).update({ qty: newQty });
+      }
+    }
+
+    setLocalData('pantry_data', pantry);
+    renderInventory();
+    renderShoppingList();
+  }
+
+  // --- 7. RENDER FUNCTIONS ---
   function renderInventory() {
     const pantry = getLocalData('pantry_data');
     const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
@@ -523,7 +551,7 @@
         const card = document.createElement('div');
         card.className = 'card mb-2 shadow-sm p-2';
         card.innerHTML = `
-          <div class="d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div class="d-flex align-items-center">
               <img src="${p.image}" class="product-img me-2">
               <div>
@@ -531,13 +559,18 @@
                 <small class="text-muted">${p.category} | ${p.location}</small>
               </div>
             </div>
-            <div class="text-end">
-              <div>
-                <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="changeQty(${idx}, -1)">-</button>
-                <span class="fw-bold mx-1">${p.qty}</span>
-                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="changeQty(${idx}, 1)">+</button>
-              </div>
-              <button class="btn btn-sm btn-link text-danger p-0 mt-1" onclick="deleteProd(${idx})"><i class="bi bi-trash"></i></button>
+            <div class="d-flex align-items-center gap-1">
+              <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="changeQty(${idx}, -1)">-</button>
+              <input type="number" id="qty_input_${idx}" class="form-control form-control-sm qty-input px-1" value="${p.qty}" min="0">
+              <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="changeQty(${idx}, 1)">+</button>
+              
+              <button class="btn btn-sm btn-primary ms-1" onclick="saveManualQty(${idx})" title="Αποθήκευση ποσότητας">
+                <i class="bi bi-floppy"></i>
+              </button>
+
+              <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="deleteProd(${idx})" title="Διαγραφή">
+                <i class="bi bi-trash"></i>
+              </button>
             </div>
           </div>
         `;
@@ -546,21 +579,25 @@
   }
 
   function changeQty(idx, change) {
-    const pantry = getLocalData('pantry_data');
-    pantry[idx].qty += change;
-    if (pantry[idx].qty <= 0) {
-      pantry.splice(idx, 1);
+    const inputField = document.getElementById(`qty_input_${idx}`);
+    if (inputField) {
+      let current = parseInt(inputField.value) || 0;
+      current += change;
+      if (current < 0) current = 0;
+      inputField.value = current;
     }
-    setLocalData('pantry_data', pantry);
-    renderInventory();
   }
 
   function deleteProd(idx) {
     if (confirm("Διαγραφή προϊόντος από το απόθεμα;")) {
       const pantry = getLocalData('pantry_data');
+      if (useFirebase && pantry[idx].id) {
+        db.collection("pantry").doc(pantry[idx].id).delete();
+      }
       pantry.splice(idx, 1);
       setLocalData('pantry_data', pantry);
       renderInventory();
+      renderShoppingList();
     }
   }
 
