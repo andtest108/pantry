@@ -504,22 +504,40 @@
     renderInventory();
   }
 
-  // --- 6. INVENTORY MANUAL QTY UPDATE ENGINE ---
+  // --- 6. INVENTORY MANUAL UPDATE ENGINE (NAME & QTY) ---
   async function saveManualQty(idx) {
     const pantry = getLocalData('pantry_data');
-    const inputField = document.getElementById(`qty_input_${idx}`);
-    if (!inputField) return;
+    const inputQty = document.getElementById(`qty_input_${idx}`);
+    const inputName = document.getElementById(`name_input_${idx}`);
 
-    const newQty = parseInt(inputField.value);
+    if (!inputQty || !inputName) return;
+
+    const newQty = parseInt(inputQty.value);
+    const newName = inputName.value.trim();
+
     if (isNaN(newQty) || newQty < 0) {
       alert("Παρακαλώ εισάγετε έναν έγκυρο αριθμό ποσότητας.");
       return;
     }
 
+    if (!newName) {
+      alert("Το όνομα του προϊόντος δεν μπορεί να είναι κενό.");
+      return;
+    }
+
     pantry[idx].qty = newQty;
+    pantry[idx].name = newName;
+
+    // Ενημέρωση και στα Learned Products
+    const customList = getLocalData('custom_products');
+    const cIdx = customList.findIndex(c => c.barcode === pantry[idx].barcode);
+    if (cIdx >= 0) {
+      customList[cIdx].name = newName;
+      setLocalData('custom_products', customList);
+    }
 
     if (newQty === 0) {
-      if (confirm(`Η ποσότητα του "${pantry[idx].name}" είναι 0. Θέλετε να διαγραφεί από το απόθεμα;`)) {
+      if (confirm(`Η ποσότητα του "${newName}" είναι 0. Θέλετε να διαγραφεί από το απόθεμα;`)) {
         if (useFirebase && pantry[idx].id) {
           await db.collection("pantry").doc(pantry[idx].id).delete();
         }
@@ -527,14 +545,20 @@
       }
     } else {
       if (useFirebase && pantry[idx].id) {
-        await db.collection("pantry").doc(pantry[idx].id).update({ qty: newQty });
+        await db.collection("pantry").doc(pantry[idx].id).update({ 
+          qty: newQty,
+          name: newName
+        });
+        if (pantry[idx].barcode) {
+          await db.collection("custom_products").doc(pantry[idx].barcode).update({ name: newName }).catch(()=>{});
+        }
       }
     }
 
     setLocalData('pantry_data', pantry);
     renderInventory();
     renderShoppingList();
-    alert("Η ποσότητα αποθηκεύτηκε!");
+    alert("Τα στοιχεία αποθηκεύτηκαν επιτυχώς!");
   }
 
   // --- 7. RENDER FUNCTIONS ---
@@ -553,11 +577,11 @@
         card.className = 'card mb-2 shadow-sm p-2';
         card.innerHTML = `
           <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div class="d-flex align-items-center me-2">
-              <img src="${p.image}" class="product-img me-2">
-              <div>
-                <strong>${p.name}</strong><br>
-                <small class="text-muted">${p.category} | ${p.location}</small>
+            <div class="d-flex align-items-center flex-grow-1 me-2" style="min-width: 200px;">
+              <img src="${p.image}" class="product-img me-2 flex-shrink-0">
+              <div class="w-100">
+                <input type="text" id="name_input_${idx}" class="form-control form-control-sm fw-bold border-0 bg-transparent p-0 mb-1" value="${p.name}" title="Πατήστε για επεξεργασία ονόματος">
+                <small class="text-muted d-block">${p.category} | ${p.location}</small>
               </div>
             </div>
             <div class="d-flex align-items-center gap-1 ms-auto">
@@ -565,7 +589,7 @@
               <input type="number" id="qty_input_${idx}" class="form-control form-control-sm qty-input px-1" value="${p.qty}" min="0">
               <button class="btn btn-sm btn-outline-success py-0 px-2 fw-bold" onclick="changeQty(${idx}, 1)">+</button>
               
-              <button class="btn btn-sm btn-primary ms-1" onclick="saveManualQty(${idx})">
+              <button class="btn btn-sm btn-primary ms-1" onclick="saveManualQty(${idx})" title="Αποθήκευση ονόματος & ποσότητας">
                 💾 Σώσε
               </button>
 
