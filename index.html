@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Pantry Manager</title>
+  <title>Smart Pantry Manager Pro</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -19,7 +19,7 @@
 
 <div class="container-fluid max-width-lg">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="m-0"><i class="bi bi-box-seam text-primary"></i> Pantry Manager</h3>
+    <h3 class="m-0"><i class="bi bi-box-seam text-primary"></i> Pantry Manager <span class="badge bg-primary fs-6">Pro</span></h3>
     <div id="storageBadge" class="badge bg-info text-dark"><i class="bi bi-hdd"></i> Local Storage</div>
   </div>
 
@@ -98,14 +98,36 @@
 
           <div class="row g-2 mb-2">
             <div class="col">
-              <label class="form-label small">Κατηγορία</label>
+              <label class="form-label small">Κατηγορία Super Market</label>
               <select id="p_category" class="form-select">
-                <option>Γαλακτοκομικά</option>
-                <option>Κονσέρβες</option>
-                <option>Ζυμαρικά / Δημητριακά</option>
-                <option>Κατάψυξη</option>
-                <option>Αναψυκτικά / Ποτά</option>
-                <option>Λοιπά</option>
+                <optgroup label="Τρόφιμα & Ψυγείο">
+                  <option>Γαλακτοκομικά & Τυροκομικά</option>
+                  <option>Αλλαντικά & Κρέατα</option>
+                  <option>Ψάρια & Θαλασσινά</option>
+                  <option>Φρούτα & Λαχανικά</option>
+                  <option>Κατάψυξη</option>
+                  <option>Ζυμαρικά & Δημητριακά</option>
+                  <option>Κονσέρβες & Έτοιμα Γεύματα</option>
+                  <option>Αρτοσκευάσματα & Σνακ</option>
+                  <option>Σάλτσες & Λάδια / Ξύδι</option>
+                  <option>Γλυκά & Μπισκότα</option>
+                </optgroup>
+                <optgroup label="Ποτά & Ροφήματα">
+                  <option>Αναψυκτικά & Νερά</option>
+                  <option>Καφέδες & Τσάι</option>
+                  <option>Χυμοί</option>
+                  <option>Αλκοολούχα Ποτά</option>
+                </optgroup>
+                <optgroup label="Καθαριότητα & Φροντίδα">
+                  <option>Χαρτικά & Απορρυπαντικά</option>
+                  <option>Καθαριστικά Σπιτιού</option>
+                  <option>Προσωπική Υγιεινή & Περιποίηση</option>
+                  <option>Παιδική Φροντίδα</option>
+                </optgroup>
+                <optgroup label="Λοιπά">
+                  <option>Είδη Κατοικιδίων</option>
+                  <option>Γενικής Χρήσης</option>
+                </optgroup>
               </select>
             </div>
             <div class="col">
@@ -115,6 +137,7 @@
                 <option>Ντουλάπι 1</option>
                 <option>Ντουλάπι 2</option>
                 <option>Κατάψυξη</option>
+                <option>Μπάνιο / Αποθήκη</option>
               </select>
             </div>
           </div>
@@ -144,12 +167,26 @@
         <input type="text" id="searchInput" class="form-control mb-2" placeholder="Αναζήτηση..." oninput="renderInventory()">
         <select id="filterCategory" class="form-select" onchange="renderInventory()">
           <option value="">Όλες οι Κατηγορίες</option>
-          <option>Γαλακτοκομικά</option>
-          <option>Κονσέρβες</option>
-          <option>Ζυμαρικά / Δημητριακά</option>
+          <option>Γαλακτοκομικά & Τυροκομικά</option>
+          <option>Αλλαντικά & Κρέατα</option>
+          <option>Ψάρια & Θαλασσινά</option>
+          <option>Φρούτα & Λαχανικά</option>
           <option>Κατάψυξη</option>
-          <option>Αναψυκτικά / Ποτά</option>
-          <option>Λοιπά</option>
+          <option>Ζυμαρικά & Δημητριακά</option>
+          <option>Κονσέρβες & Έτοιμα Γεύματα</option>
+          <option>Αρτοσκευάσματα & Σνακ</option>
+          <option>Σάλτσες & Λάδια / Ξύδι</option>
+          <option>Γλυκά & Μπισκότα</option>
+          <option>Αναψυκτικά & Νερά</option>
+          <option>Καφέδες & Τσάι</option>
+          <option>Χυμοί</option>
+          <option>Αλκοολούχα Ποτά</option>
+          <option>Χαρτικά & Απορρυπαντικά</option>
+          <option>Καθαριστικά Σπιτιού</option>
+          <option>Προσωπική Υγιεινή & Περιποίηση</option>
+          <option>Παιδική Φροντίδα</option>
+          <option>Είδη Κατοικιδίων</option>
+          <option>Γενικής Χρήσης</option>
         </select>
       </div>
       <div id="inventoryCards"></div>
@@ -286,7 +323,7 @@
     reader.readAsDataURL(file);
   }
 
-  // --- 4. BARCODE PROCESSING ENGINE ---
+  // --- 4. MULTI-API BARCODE PROCESSING ENGINE ---
   async function processBarcode(barcode) {
     if (!barcode) return;
     const mode = document.querySelector('input[name="scanMode"]:checked').value;
@@ -332,7 +369,7 @@
   async function handleCheckIn(barcode) {
     resetForm();
     document.getElementById('p_barcode').value = barcode;
-    document.getElementById('p_name').placeholder = "Αναζήτηση στο API...";
+    document.getElementById('p_name').placeholder = "Αναζήτηση σε όλα τα APIs...";
 
     const pantry = getLocalData('pantry_data');
     const customList = getLocalData('custom_products');
@@ -361,19 +398,23 @@
       } catch(e) { console.error("Firestore lookup error", e); }
     }
 
-    // 3. Open Food Facts API Search with Fallback Domains
+    // 3. Multi-API Search Engine (Food, Beauty/Personal Care, Household Products)
     let found = false;
-    const apiUrls = [
+    const apiEndPoints = [
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-      `https://el.openfoodfacts.org/api/v0/product/${barcode}.json`
+      `https://el.openfoodfacts.org/api/v0/product/${barcode}.json`,
+      `https://world.openbeautyfacts.org/api/v0/product/${barcode}.json`,
+      `https://world.openproductsfacts.org/api/v0/product/${barcode}.json`,
+      `https://api.upcitemdb.com/prod/trial/lookup?upc=${barcode}`
     ];
 
-    for (let url of apiUrls) {
+    for (let url of apiEndPoints) {
       if (found) break;
       try {
-        const res = await fetch(url, { headers: { 'User-Agent': 'SmartPantryManagerApp - Web - Version 1.0' } });
+        const res = await fetch(url, { headers: { 'User-Agent': 'SmartPantryManagerProApp - Web - Version 2.0' } });
         const data = await res.json();
         
+        // Handling Open Facts APIs (Food, Beauty, Products)
         if (data.status === 1 && data.product) {
           const prod = data.product;
           const name = prod.product_name_el || prod.product_name || prod.generic_name_el || prod.generic_name || prod.product_name_en || '';
@@ -386,20 +427,33 @@
             document.getElementById('p_qty').value = 1;
             found = true;
           }
+        } 
+        // Handling UPCitemdb API
+        else if (data.items && data.items.length > 0) {
+          const item = data.items[0];
+          const name = item.title || '';
+          const img = (item.images && item.images.length > 0) ? item.images[0] : '';
+          if (name) {
+            document.getElementById('p_name').value = name;
+            document.getElementById('p_image').value = img;
+            document.getElementById('p_preview').src = img || 'https://via.placeholder.com/80?text=No+Image';
+            document.getElementById('p_qty').value = 1;
+            found = true;
+          }
         }
-      } catch(e) { console.error("API error:", e); }
+      } catch(e) { console.error("API Fetch Error:", e); }
     }
 
     if (!found) {
       document.getElementById('p_name').placeholder = "Όνομα προϊόντος (Πληκτρολογήστε το)";
-      alert('Το προϊόν δεν υπάρχει στη διεθνή βάση. Πληκτρολογήστε το όνομά του και βγάλτε μια φωτογραφία — η εφαρμογή θα το "μάθει" για πάντα!');
+      alert('Το προϊόν δεν βρέθηκε στις ελεύθερες βάσεις. Συμπληρώστε το όνομα και βγάλτε μια φωτογραφία — η εφαρμογή θα το "μάθει" για πάντα!');
       document.getElementById('p_name').focus();
     }
   }
 
   function populateForm(data) {
     document.getElementById('p_name').value = data.name || '';
-    document.getElementById('p_category').value = data.category || 'Γαλακτοκομικά';
+    document.getElementById('p_category').value = data.category || 'Γαλακτοκομικά & Τυροκομικά';
     document.getElementById('p_location').value = data.location || 'Ψυγείο';
     document.getElementById('p_qty').value = data.qty || 1;
     document.getElementById('p_min_qty').value = data.min_qty || 1;
